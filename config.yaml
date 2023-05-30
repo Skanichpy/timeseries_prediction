@@ -1,0 +1,28 @@
+data:
+  test_size: 0.2
+  train_batch_size: 32
+  test_batch_size: 16 
+  window_len: 30 
+  shuffle: False
+
+model:
+  rnn:
+    input_size: 8
+    hidden_size: 1024
+    out_layer_size: 512
+    num_layers: 2
+    bidirectional: False
+
+  conv: 
+    in_channels: 1
+    out_features: 1
+
+  fc_nstep: 
+    input_size: 80
+    n_steps: 10
+    hidden_size: 256
+    n_layers: 4
+
+training: 
+  n_epochs: 60
+    
