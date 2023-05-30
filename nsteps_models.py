@@ -46,16 +46,60 @@ class TimeSeriesFcRegressionN(RegressionNet):
     
 
 class TimeSeriesLstmRegressionN(RegressionNet):
-    def __init__(self, hidden_size): 
-        super().__init__()
+    def __init__(self, input_size,
+                 hidden_size,
+                 decoder_hidden_size,
+                 num_layers,
+                 bidirectional,
+                 nsteps,
+                 loss=F.mse_loss): 
+        super().__init__(loss)
         self.hidden_size = hidden_size
-        self.encoder = nn.GRU() 
-        self.decoder = nn.GRU() 
-        self.regressor = nn.Linear(hidden_size)
+
+        self.enc = nn.GRU(input_size=input_size,
+             hidden_size=hidden_size,
+             num_layers=num_layers,
+             batch_first=True,
+             bidirectional=bidirectional) 
+        
+        self.nsteps = nsteps
+        self.scale_b = 2 if bidirectional else 1 
+        self.new_input_size = self.scale_b * self.hidden_size
+        self.decoder_hidden_size = decoder_hidden_size
+
+        self.dec = nn.GRU(input_size=self.new_input_size, 
+             hidden_size=decoder_hidden_size, 
+             num_layers=1,
+             batch_first=True,
+             bidirectional=False)
+         
+        self.regressor = nn.Linear(decoder_hidden_size, 1)
     
     def forward(self, x): 
-        encoder_h, hidden = self.encoder(x)
-        decoder_h, _ = self.decoder(encoder_h, hidden)
+        encoder_h, hidden = self.enc(x.float())
+        context_vector = hidden.mean(dim=0)
+        context_vector = context_vector.view(1,-1,self.decoder_hidden_size)
+        decoder_h, _ = self.dec(encoder_h, context_vector)
 
-        x_out = decoder_h.view(-1, self.hidden_size) 
-        return self.regressor(x_out) 
+        x_out = self.regressor(decoder_h).view(-1, self.nsteps)
+        return x_out
+    
+    def configure_optimizers(self) -> Any:
+        return optim.Adam([*self.enc.parameters(), 
+                           *self.dec.parameters(),
+                           *self.regressor.parameters()],
+                           lr=3e-4)
+
+
+    def validation_step(self, batch, batch_idx): 
+        mse, mae = self._shared_eval_step(batch, batch_idx)
+        metrics = {'mse': mse, 'mae': mae}
+        self.log_dict(metrics,
+                      prog_bar=True)
+    
+    def _shared_eval_step(self, batch, batch_idx): 
+        x, y = batch 
+        predictions = self(x)
+
+        return tm.MeanSquaredError()(predictions, y),\
+               tm.MeanAbsoluteError()(predictions, y)

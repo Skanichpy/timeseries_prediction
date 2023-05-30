@@ -131,11 +131,25 @@ class TimeSeriesConv1dDataset(TimeSeriesDataset):
     
 
 class TimeSeriesNstepsDataset(TimeSeriesDataset): 
+
     def __init__(self, paths, augm_path, window_len):
         super().__init__(paths, augm_path, window_len)
     
     def __getitem__(self, index):
         return torch.from_numpy(self.X.iloc[index].values), \
+               torch.tensor(self.y.values[index:(index+self.window_len)])
+    
+    def __len__(self): 
+        return len(self.data) - self.window_len
+    
+
+class TimeSeriesNstepsLstmDataset(TimeSeriesDataset): 
+    
+    def __init__(self, paths, augm_path, window_len):
+        super().__init__(paths, augm_path, window_len)
+    
+    def __getitem__(self, index):
+        return torch.from_numpy(self.X.iloc[index].values).view(-1, self.window_len).transpose(1,0), \
                torch.tensor(self.y.values[index:(index+self.window_len)])
     
     def __len__(self): 
