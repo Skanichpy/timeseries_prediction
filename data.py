@@ -154,3 +154,41 @@ class TimeSeriesNstepsLstmDataset(TimeSeriesDataset):
     
     def __len__(self): 
         return len(self.data) - self.window_len
+    
+    
+class SberDataset: 
+
+    def __init__(self, sber_path, window_len) -> None: 
+        self.sber_path = sber_path
+        self.window_len = window_len
+        self.prepare(sber_path)
+        self.X = TimeSeriesDataset.to_autoregression_form(data=self.data, target_column='Close',
+                                                             window_len=self.window_len)
+        self.data = pd.concat([self.X, self.data['Close']], axis=1).rename({"Close": "y"}, axis=1).dropna() 
+        self.y = self.data['y']
+        self.X = self.data.drop('y', axis=1)
+
+    def __getitem__(self, index):
+        return torch.from_numpy(self.X.iloc[index].values.reshape(-1,1)), \
+               torch.Tensor(self.y.iloc[index: (index+self.window_len)])
+    
+    def __len__(self): 
+        return len(self.X) - self.window_len 
+
+
+    def prepare(self, path): 
+        sber_path = sorted(path.glob('*.txt'))
+        data = pd.read_csv(sber_path[0], sep='\t', header=None,
+                        parse_dates=[0], 
+                        names=['Datetime', 'Open', 'High', 'Low', 'Close'])
+        data = data[['Datetime', 'Close']]
+        data['Date'] = data['Datetime'].map(lambda dt: dt.date())
+        data = data.sort_values(by=['Datetime'])
+        data.drop("Datetime", axis=1, inplace=True)
+        data.set_index("Date", inplace=True)
+
+        data = data.groupby(level=0).agg({"Close": lambda rows: rows[-1]})
+        data['Close'] = data['Close'].pct_change()
+        data.dropna(inplace=True)
+
+        self.data = data 
