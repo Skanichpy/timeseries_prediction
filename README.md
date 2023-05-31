@@ -22,6 +22,6 @@ The key idea is to build the encoder-decoder architecture of the RNN, as well as
 
 
 
-<center>
+
 <a href="https://pytorchlightning.ai/index.html"><img src="https://tse3.mm.bing.net/th?id=OIP.KFKo1oaV1Pbrm3frVadQVAHaC8&pid=Api"></a>
-<a href="https://pytorch.org/"><img src="https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://s3.amazonaws.com/coursera-course-photos/51/6d31a64dad46d08a076ef7abbf4f15/external-content.duckduckgo.com.jpg?auto=format%2Ccompress&dpr=2&w=150&h=150&fit=fill&bg=FFF&q=25i" height=169></a> </center>
+<a href="https://pytorch.org/"><img src="https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://s3.amazonaws.com/coursera-course-photos/51/6d31a64dad46d08a076ef7abbf4f15/external-content.duckduckgo.com.jpg?auto=format%2Ccompress&dpr=2&w=150&h=150&fit=fill&bg=FFF&q=25i" height=169></a>
