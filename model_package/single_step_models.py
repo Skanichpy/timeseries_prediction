@@ -7,12 +7,12 @@ import torch.optim as optim
 
 import torchmetrics as tm
 
-from abstract_model import RegressionNet
+from . import abstract_model 
 
 
     
 
-class TimeSeriesLstmRegression(RegressionNet):
+class TimeSeriesGruRegression(abstract_model.RegressionNet):
     def __init__(self, input_size:int, hidden_size:int,
                  out_layer_size:int, num_layers:int,
                  bidirectional:bool, loss=F.mse_loss): 
@@ -47,7 +47,7 @@ class TimeSeriesLstmRegression(RegressionNet):
                           lr=3e-4)
 
 
-class TimeSeriesConv1dRegression(RegressionNet): 
+class TimeSeriesConv1dRegression(abstract_model.RegressionNet): 
 
     def __init__(self, in_channels, out_features, loss=F.mse_loss): 
         super().__init__(loss)
@@ -68,7 +68,7 @@ class TimeSeriesConv1dRegression(RegressionNet):
                                                 nn.AvgPool1d(2),
                                                 ) 
 
-        self.regressor = nn.Linear(3456, 1)
+        self.regressor = nn.Linear(2432, 1)
 
 
     def forward(self, x): 

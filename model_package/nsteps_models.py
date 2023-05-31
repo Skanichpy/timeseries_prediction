@@ -8,9 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F 
 
-from abstract_model import RegressionNet
+from . import abstract_model 
 
-class TimeSeriesFcRegressionN(RegressionNet): 
+class TimeSeriesFcRegressionN(abstract_model.RegressionNet): 
     def __init__(self, input_size, 
                  hidden_size, 
                  n_layers, 
@@ -45,10 +45,9 @@ class TimeSeriesFcRegressionN(RegressionNet):
                tm.MeanAbsoluteError()(predictions, y)
     
 
-class TimeSeriesLstmRegressionN(RegressionNet):
+class TimeSeriesGruRegressionN(abstract_model.RegressionNet):
     def __init__(self, input_size,
                  hidden_size,
-                #  decoder_hidden_size,
                  num_layers,
                  bidirectional,
                  nsteps,
@@ -71,40 +70,33 @@ class TimeSeriesLstmRegressionN(RegressionNet):
 
         self.dec = nn.GRU(batch_first=True,
                           hidden_size=hidden_size,
-                          input_size=1)
-
-        # self.decoder_hidden_size = decoder_hidden_size
-
-        # self.enc_predictor = nn.Linear(self.scale_b*hidden_size, 1)
-
-        # self.dec = nn.GRU(input_size=1, 
-        #      hidden_size=decoder_hidden_size, 
-        #      num_layers=1,
-        #      batch_first=True,
-        #      bidirectional=False)
-         
-        # self.regressor = nn.Sequential(
-        #                 nn.Linear(decoder_hidden_size, decoder_hidden_size),
-        #                 nn.LeakyReLU(),
-        #                 nn.Linear(decoder_hidden_size, 1))
+                          input_size=hidden_size, 
+                          num_layers=1)
+        
+        self.additional_regressor = nn.Sequential(nn.Linear(self.nsteps, self.nsteps))
+        
+        self.regressor = nn.Sequential(
+                            nn.Linear(self.hidden_size, 1))
     
     def forward(self, x): 
-        encoder_h, hidden = self.enc(x.float())
+        encoder_h, context = self.enc(x.float())
+        encoder_h = encoder_h[:,-1,:].view(-1,1,self.hidden_size)
         
-        # context_vector = hidden.mean(dim=0)
-        # context_vector = context_vector.view(1,-1,self.decoder_hidden_size)
-        # enc_preds = self.enc_predictor(encoder_h).view(-1, self.nsteps, 1)
+        outputs = []
+        for step in range(self.nsteps):
+            encoder_h, context = self.dec(encoder_h[:,-1,:].view(-1, 1, self.hidden_size), context)
+            outputs.append(encoder_h.view(-1, self.hidden_size))
         
-        # decoder_h, _ = self.dec(enc_preds, context_vector)
-
-        x_out = self.dec(encoder_h)
-        return x_out.squeeze(2)
+        x_out = torch.cat(outputs).view(-1, self.nsteps, self.hidden_size)
+        out = self.regressor(x_out).squeeze(2)
+        out2 = self.additional_regressor(x.squeeze(2).float())
+        return out/2 + out2/2
     
     def configure_optimizers(self) -> Any:
         return optim.Adam([*self.enc.parameters(), 
                            *self.dec.parameters(),
-                        #    *self.enc_predictor.parameters(),
-                        #    *self.regressor.parameters()
+                           *self.additional_regressor.parameters(),
+                           *self.regressor.parameters()
                           ],
                            lr=0.1)
 
