@@ -1,8 +1,10 @@
+model_savepath: "fitted_models"
+
 data:
   test_size: 0.2
   train_batch_size: 32
   test_batch_size: 16 
-  window_len: 30 
+  window_len: 10 
   shuffle: False
 
 model:
@@ -24,14 +26,15 @@ model:
     n_layers: 4
 
   rnn_nstep: 
-    input_size: 8 
+    input_size: 1
     hidden_size: 128 
-    decoder_hidden_size: 128 
-    num_layers: 2 
-    bidirectional: True
+    num_layers: 1
+    bidirectional: False
     nsteps: 10
 
 
 training: 
-  n_epochs: 60
+  rnn_n_epochs: 5
+  cnn_n_epochs: 100 
+  fc_n_epochs: 10
     
