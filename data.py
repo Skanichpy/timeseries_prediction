@@ -77,7 +77,7 @@ class TimeSeriesDataset(Dataset):
         return data
     
     @staticmethod
-    def scale_data_to_train(y):
+    def scale_data_to_train(y, scaler=None):
         q3 = np.quantile(y, 0.75)
         q1 = np.quantile(y, 0.25)
         iqr = q3 - q1
@@ -88,7 +88,7 @@ class TimeSeriesDataset(Dataset):
 
         y[y_mask_more | y_mask_less] = y[~y_mask_more & ~y_mask_less].median()
 
-        scaler = StandardScaler()
+        scaler = StandardScaler() if scaler is None else scaler
         y_scaled = scaler.fit_transform(y.values.reshape(-1,1))
         # y_scaled = np.exp(y_scaled)
         y = pd.Series(y_scaled.reshape(-1), name=y.name)
@@ -162,15 +162,19 @@ class SberDataset:
         self.sber_path = sber_path
         self.window_len = window_len
         self.prepare(sber_path)
+        y, _ = TimeSeriesDataset.scale_data_to_train(self.data['Close'],
+                                                     scaler=MinMaxScaler())
+        self.data['Close'] = y.values
         self.X = TimeSeriesDataset.to_autoregression_form(data=self.data, target_column='Close',
                                                              window_len=self.window_len)
         self.data = pd.concat([self.X, self.data['Close']], axis=1).rename({"Close": "y"}, axis=1).dropna() 
-        self.y = self.data['y']
+        
         self.X = self.data.drop('y', axis=1)
+        self.y = self.data['y']
 
     def __getitem__(self, index):
         return torch.from_numpy(self.X.iloc[index].values.reshape(-1,1)), \
-               torch.Tensor(self.y.iloc[index: (index+self.window_len)])
+               torch.tensor(self.y.values[index: (index+self.window_len)])
     
     def __len__(self): 
         return len(self.X) - self.window_len 

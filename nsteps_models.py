@@ -48,7 +48,7 @@ class TimeSeriesFcRegressionN(RegressionNet):
 class TimeSeriesLstmRegressionN(RegressionNet):
     def __init__(self, input_size,
                  hidden_size,
-                 decoder_hidden_size,
+                #  decoder_hidden_size,
                  num_layers,
                  bidirectional,
                  nsteps,
@@ -62,33 +62,51 @@ class TimeSeriesLstmRegressionN(RegressionNet):
              batch_first=True,
              bidirectional=bidirectional) 
         
+        
+
         self.nsteps = nsteps
         self.scale_b = 2 if bidirectional else 1 
         self.new_input_size = self.scale_b * self.hidden_size
-        self.decoder_hidden_size = decoder_hidden_size
+        self.fc_size = self.scale_b * hidden_size
 
-        self.dec = nn.GRU(input_size=self.new_input_size, 
-             hidden_size=decoder_hidden_size, 
-             num_layers=1,
-             batch_first=True,
-             bidirectional=False)
+        self.dec = nn.GRU(batch_first=True,
+                          hidden_size=hidden_size,
+                          input_size=1)
+
+        # self.decoder_hidden_size = decoder_hidden_size
+
+        # self.enc_predictor = nn.Linear(self.scale_b*hidden_size, 1)
+
+        # self.dec = nn.GRU(input_size=1, 
+        #      hidden_size=decoder_hidden_size, 
+        #      num_layers=1,
+        #      batch_first=True,
+        #      bidirectional=False)
          
-        self.regressor = nn.Linear(decoder_hidden_size, 1)
+        # self.regressor = nn.Sequential(
+        #                 nn.Linear(decoder_hidden_size, decoder_hidden_size),
+        #                 nn.LeakyReLU(),
+        #                 nn.Linear(decoder_hidden_size, 1))
     
     def forward(self, x): 
         encoder_h, hidden = self.enc(x.float())
-        context_vector = hidden.mean(dim=0)
-        context_vector = context_vector.view(1,-1,self.decoder_hidden_size)
-        decoder_h, _ = self.dec(encoder_h, context_vector)
+        
+        # context_vector = hidden.mean(dim=0)
+        # context_vector = context_vector.view(1,-1,self.decoder_hidden_size)
+        # enc_preds = self.enc_predictor(encoder_h).view(-1, self.nsteps, 1)
+        
+        # decoder_h, _ = self.dec(enc_preds, context_vector)
 
-        x_out = self.regressor(decoder_h).view(-1, self.nsteps)
-        return x_out
+        x_out = self.dec(encoder_h)
+        return x_out.squeeze(2)
     
     def configure_optimizers(self) -> Any:
         return optim.Adam([*self.enc.parameters(), 
                            *self.dec.parameters(),
-                           *self.regressor.parameters()],
-                           lr=3e-4)
+                        #    *self.enc_predictor.parameters(),
+                        #    *self.regressor.parameters()
+                          ],
+                           lr=0.1)
 
 
     def validation_step(self, batch, batch_idx): 
