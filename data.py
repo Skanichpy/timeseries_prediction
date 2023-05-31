@@ -4,7 +4,7 @@ import pandas as pd
 import torch 
 from torch.utils.data import Dataset 
 
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, QuantileTransformer, KBinsDiscretizer
 import numpy as np
 
 from datetime import time
@@ -143,13 +143,13 @@ class TimeSeriesNstepsDataset(TimeSeriesDataset):
         return len(self.data) - self.window_len
     
 
-class TimeSeriesNstepsLstmDataset(TimeSeriesDataset): 
+class TimeSeriesNstepsGruDataset(TimeSeriesDataset): 
     
     def __init__(self, paths, augm_path, window_len):
         super().__init__(paths, augm_path, window_len)
     
     def __getitem__(self, index):
-        return torch.from_numpy(self.X.iloc[index].values).view(-1, self.window_len).transpose(1,0), \
+        return torch.from_numpy(self.X.iloc[index].values).view(-1, self.window_len).transpose(1,0)[:,0].view(-1,1), \
                torch.tensor(self.y.values[index:(index+self.window_len)])
     
     def __len__(self): 
@@ -163,8 +163,10 @@ class SberDataset:
         self.window_len = window_len
         self.prepare(sber_path)
         y, _ = TimeSeriesDataset.scale_data_to_train(self.data['Close'],
-                                                     scaler=MinMaxScaler())
-        self.data['Close'] = y.values
+                                                     scaler=StandardScaler())
+        
+        self.data['Close'] = y.rolling(400).mean().values
+        self.data.dropna(inplace=True)
         self.X = TimeSeriesDataset.to_autoregression_form(data=self.data, target_column='Close',
                                                              window_len=self.window_len)
         self.data = pd.concat([self.X, self.data['Close']], axis=1).rename({"Close": "y"}, axis=1).dropna() 

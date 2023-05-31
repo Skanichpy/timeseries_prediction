@@ -88,3 +88,21 @@ def plot_nstep_real_and_predictions(test_dataset, test_predictions):
                        label='predictions')
         ax[idx-1].set_title(f'GT and PRED for step: {idx}') 
         ax[idx-1].legend() 
+
+def plot_nstep_mono_real_and_predictions(dataset, predictions,
+                                         sample_type='[TEST]'): 
+    gt = get_gt(dataset, mode='n_step')
+    predictions = torch.cat(predictions)    
+    predictions = predictions[:, 0]
+    gt = gt[:,0].view(-1)
+    plt.figure(figsize=(20,8))
+    plt.title(f'{sample_type} estimated and gt results')
+    plt.plot(gt, label='gt', linewidth=7)
+    plt.plot(predictions, label='estimated')
+    plt.legend()
+
+    plt.figure(figsize=(20,8))
+    plt.title(f"{sample_type} Corr. coef(t)")
+    plt.plot([torch.corrcoef(torch.cat([predictions.view(1,-1), 
+                                        gt.view(1,-1)], dim=0)[:,:thr])[0][-1] \
+              for thr in range(2, len(predictions))])
